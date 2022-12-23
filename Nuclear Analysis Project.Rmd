@@ -1,0 +1,979 @@
+---
+title: "Nuclear Analysis Project"
+author: "Swarnim Khosla"
+date: "2022-12-10"
+output: html_document
+---
+
+# Introduction
+
+```{r}
+# The topic of our project is "Analysis and Prediction of Factors influencing Nuclear Power Plant Cost."
+
+# The main time consuming task for our project was Data Sourcing and Data Cleansing our our csv file. Around 80-90% of the effort went into collating the final csv file.
+
+# The goal of our project is to know what factors influence the cost of a nuclear power plant.
+
+# In our Project, the response variable (dependent variable) shall be "Cost (US$)" (In Billions).
+
+# The Predictor variables (independent variables which influence the varaible "Cost") shall be the following: -
+
+# 1) Country: - Qualitative variable which lists the name of the country where the nuclear reactor was made. 21 types of countries are listed in our csv file.
+
+# 2) Reactor Type: - Nuclear energy can be implemented in many different ways; hence the different types of Nuclear Reactors. In our data set, we have a list of 7 different reactor types.
+
+# 3) Gross Capacity (MWe): - The amount of electricity the nuclear reactor can generate during its operation. The units are in Mega Watts Electric.
+
+# 4) Thermal Capacity (MWt): - The amount of heat the nuclear reactor generates due to fission. Do note that heat is converted to electricity. The units are in Mega Watts Thermal.
+
+# 5) Efficiency Percentage: - How efficient is the nuclear reactor in converting heat to electricity? The more the efficiency; the more heat is converted to electricity.
+
+# 6) Starting Year: - The year when the construction of that nuclear reactor started.
+
+# 7) Duration (in years): - The number of years it took to make that nuclear reactor from start to end.
+
+# 8) Average Inflation Percentage: - The amount of inflation that occurred (YoY) during the time period it took for construction of the reactor. 
+
+# 9) Average Concrete Price: - The average concrete price during the time period it took for construction of the reactor. (Producer Price Index (PPI) value is given)
+
+# 10) Average Steel Price: - The average steel price during the time period it took for construction of the reactor. (Producer Price Index (PPI) value is given)
+```
+
+# Hypothesis
+
+```{r}
+# Our Hypothesis of how the predictor variables should affect the response variable are as follows: -
+
+# 1) Country: - We expect to see different prices of nuclear reactors on the basis of different countries due to various differences in labour costs, laws and regulations, financing methods which are paticular for that specific country etc.
+
+# 2) Reactor Type: - We expect to see that the reactor type "PWR" be the cheapest reactor to be constructed because it is the most common type of nuclear reactor to be made. Economies of scale dictates that enterprises obtain due to their scale of operation more cost advantages over others who cannot scale.
+
+# On a similar note, we expect to see "FBR" reactor to be the most costly one becuase it is one of the most challenging reactor to be made.
+
+# 3) Gross Capacity (MWe): - The more electricity a nuclear reactor generates, the more costly the reactors should be, since the conventional island would be bigger in size.
+
+# 4) Thermal Capacity (MWt): - The more heat a reactor generates, the more costly that reactor should be, since the reactor core would be bigger in size.
+
+# 5) Efficiency Percentage: - The more efficient the reactor is, it means the more expensive turbine and generator in the conventional island was used. Hence more the efficiency, more the cost.
+
+# 6) Starting Year: - We expect to see the reactors which were made in earlier years to be cheaper than the reactors which are made in modern times due to less safety regulations, lax laws and ease of financing during earlier times.
+
+# 7) Duration: - The more time a reactor takes to be constructed, the more costly it should be due to cost overruns etc.
+
+# 8) Average Inflation Percentage: - The more the inflation is during a certain period of time, the costlier the things would be. 
+
+# 9) Average Concrete Price: - Over 95% of materials which makes a nuclear reactor is steel and concrete. We expect to see, the more the average price of steel, the more the reactor cost.
+
+# 10) Average Steel Price: - Over 95% of materials which makes a nuclear reactor is steel and concrete. We expect to see, the more the average price of steel, the more the reactor cost.
+```
+
+# Dataset sourcing
+
+```{r}
+# Our final CSV file was made with the combination of data taken from the following websites linked below: -
+
+# Construction Time, Start year, Country, Capacity, Reactor Type, Frequency : - https://pris.iaea.org/PRIS/CountryStatistics/CountryDetails.aspx?current=IN
+
+# Steel cost : - https://fred.stlouisfed.org/series/WPU101
+
+# Cement cost : - https://fred.stlouisfed.org/series/WPU1333
+
+# Inflation Rate : - https://data.worldbank.org/indicator/FP.CPI.TOTL.ZG
+
+
+# Cost of reactors: - 
+
+# AP1000's: https://de.nucleopedia.org/wiki/Advanced_Passive#Auftr%C3%A4ge
+# VVER-1200: https://de.nucleopedia.org/wiki/WWER-1200#Auftr%C3%A4ge
+# Some VVER-1000: https://de.nucleopedia.org/wiki/Liste_der_WWER#Version_392
+# EPR: https://de.nucleopedia.org/wiki/Framatome_EPR#Auftr%C3%A4ge
+# CNP-300: https://de.nucleopedia.org/wiki/Benutzer:TZV/CNP-300#Auftr%C3%A4ge
+# CE System 80: https://de.nucleopedia.org/wiki/Benutzer:TZV/Combustion_Engineering_System_80#Auftr%C3%A4ge
+# Hualong One: https://de.nucleopedia.org/wiki/Benutzer:TZV/HPR#Auftr%C3%A4ge
+```
+
+# Index
+
+```{r}
+# In the following .Rmd file: we shall be going through the following steps: -
+
+# 1) Pre-screening Process: -  
+
+  # 1) Checking for Multicollinearity
+  # 2) Global F-Test
+  # 3) Step-wise / Backward Procedure
+  # 4) Individual T-test
+
+# 2) Making Additive Model
+
+# 3) Making Interaction Model
+
+# 4) Making Higher Order Model
+
+# 5) Testing for Assumptions
+
+  # 1) Linearity Assumption
+  # 2) Independence Assumption
+  # 3) Checking for Homoscedasticity
+  # 4) Normality Assumption
+  # 5) Checking for Outliers
+
+# 6) Making Predictions
+```
+
+# Preparation
+
+```{r}
+library(binom)
+library(car)
+library(collapsibleTree)
+library(dbplyr)
+library(dplyr)
+library(EnvStats)
+library(ggformula)
+library(ggplot2)
+library(gmodels)
+library(htmltools)
+library(ISLR)
+library(knitr)
+library(lawstat)
+library(markdown)
+library(mosaic)
+library(mdsr)
+library(mosaicData)
+library(nycflights13)
+library(olsrr)
+library(plyr)
+library(purrr)
+library(plotly)
+library(resampledata)
+library(rmarkdown)
+library(rpart)
+library(rpart.plot)
+library(rvest)
+library(SDaA)
+library(shiny)
+library(stringi)
+library(tibble)
+library(tidyr)
+library(tidyselect)
+library(tinytex)
+library(yaml)
+library(shiny)
+library(GGally)
+library(lmtest)
+library(ggplot2)
+library(mctest)
+library(MASS)
+library(agricolae)
+```
+
+```{r}
+# Attaching our Nuclear CSV file.
+
+nuclear.df = read.table("Nuclear_Data.csv",sep =",", header = TRUE)
+
+head(nuclear.df , 5)
+```
+
+```{r}
+tail(nuclear.df , 5)
+```
+
+```{r}
+nuclear.regression.model<-lm(Cost_Billion_Dollars~factor(Country)+factor(Reactor_Type)+Gross_Capacity_MWe+Thermal_Capacity_MWt+Efficiency_Percentage+Starting_Year+Duration+Average_Inflation_Percentage+Average_Concrete_Price+Average_Steel_Price, data = nuclear.df)
+
+summary(nuclear.regression.model)
+```
+
+# Pre-Screening Process
+
+## Multicollinearity
+
+```{r}
+
+multicollinearity.nuclear.regression.model<-lm(Cost_Billion_Dollars~Gross_Capacity_MWe+Thermal_Capacity_MWt+Efficiency_Percentage+Starting_Year+Duration+Average_Inflation_Percentage+Average_Concrete_Price+Average_Steel_Price, data = nuclear.df) # Model with all variables except for the categorical variables.
+
+# Calculating VIF for Multicollinearity model
+
+
+imcdiag(multicollinearity.nuclear.regression.model, method="VIF")
+```
+
+```{r}
+print("We have detected collinearity between several variables, We must first concentrate on those 2 variables with the highest VIF value, i.e. Gross_Capacity_MWe AND Thermal_Capacity_MWt and remove one of them.")
+```
+
+```{r}
+# Scatter Plot between the 2 highest predictor variables.
+
+pairs(~Gross_Capacity_MWe + Thermal_Capacity_MWt, data=nuclear.df)
+```
+
+
+
+```{r}
+# First checking for the correlation between "Cost" response variable and all the predictor variables using GG Pairs.
+
+# We shall now check all pairwise combinations of predictors and look at the correlation between them using GGPairs().
+
+nuclear.df.subset<-data.frame(nuclear.df$Cost_Billion_Dollars, nuclear.df$Gross_Capacity_MWe, nuclear.df$Thermal_Capacity_MWt, nuclear.df$Efficiency_Percentage, nuclear.df$Starting_Year, nuclear.df$Duration, nuclear.df$Average_Inflation_Percentage, nuclear.df$Average_Concrete_Price, nuclear.df$Average_Steel_Price)
+
+
+head(nuclear.df.subset,5)
+```
+
+```{r}
+tail(nuclear.df.subset,5)
+```
+
+```{r}
+ggpairs(nuclear.df.subset)
+#LOESS or LOWESS: LOcally WEighted Scatter-plot Smoother
+ggpairs(nuclear.df.subset, lower = list(continuous = "smooth_loess", combo =
+"facethist", discrete = "facetbar", na = "na"))
+```
+
+### Thermal Capacity Removal
+
+```{r}
+print("From the result of GGPairs, we can see that Correlation between 'Cost' variable and 'Gross Capacity' variable (0.436) is larger than correlation between 'Cost' variable and 'Thermal Capacity' variable (0.423). Hence we shall remove 'Thermal Capacity' variable from dataset due to Multicollinearity.")
+```
+
+```{r}
+# Doing Multicollinearity testing once again without Thermal Capacity Variable.
+
+
+multicollinearity.nuclear.regression.model<-lm(Cost_Billion_Dollars~Gross_Capacity_MWe+Efficiency_Percentage+Starting_Year+Duration+Average_Inflation_Percentage+Average_Concrete_Price+Average_Steel_Price, data = nuclear.df)
+
+# Calculating VIF for Multicollinearity model
+
+imcdiag(multicollinearity.nuclear.regression.model, method="VIF")
+
+```
+
+```{r}
+print("We have detected collinearity between several variables, We must first concentrate on those 2 variables with the highest VIF value, i.e. Average_Concrete_Price AND Average_Steel_Price and remove one of them.")
+```
+
+```{r}
+# Scatter Plot between the 2 highest predictor variables.
+
+pairs(~Average_Concrete_Price + Average_Steel_Price, data=nuclear.df)
+```
+
+```{r}
+# First checking for the correlation between "Cost" response variable and all the predictor variables using GG Pairs.
+
+# We shall now check all pairwise combinations of predictors and look at the correlation between them using GGPairs().
+
+nuclear.df.subset<-data.frame(nuclear.df$Cost_Billion_Dollars, nuclear.df$Gross_Capacity_MWe, nuclear.df$Efficiency_Percentage, nuclear.df$Starting_Year, nuclear.df$Duration, nuclear.df$Average_Inflation_Percentage, nuclear.df$Average_Concrete_Price, nuclear.df$Average_Steel_Price)
+
+ggpairs(nuclear.df.subset)
+#LOESS or LOWESS: LOcally WEighted Scatter-plot Smoother
+ggpairs(nuclear.df.subset, lower = list(continuous = "smooth_loess", combo =
+"facethist", discrete = "facetbar", na = "na"))
+```
+
+### Average_Steel_Price Removal
+
+
+```{r}
+print("From the result of GGPairs, we can see that Correlation between 'Cost' variable and 'Average_Concrete_Price' variable (0.276) is larger than correlation between 'Cost' variable and 'Average_Steel_Price' variable (0.266). Hence we shall remove 'Average_Steel_Price' variable from dataset due to Multicollinearity.")
+```
+
+```{r}
+# Doing Multicollinearity testing once again without Average_Steel_Price Variable.
+
+
+multicollinearity.nuclear.regression.model<-lm(Cost_Billion_Dollars~Gross_Capacity_MWe+Efficiency_Percentage+Starting_Year+Duration+Average_Inflation_Percentage+Average_Concrete_Price, data = nuclear.df)
+
+# Calculating VIF for Multicollinearity model
+
+imcdiag(multicollinearity.nuclear.regression.model, method="VIF")
+```
+
+```{r}
+print("We have detected collinearity between 'Starting_Year' and 'Average_Concrete_Price'. We must therefore remove one of them.")
+```
+
+```{r}
+# Scatter Plot between the 2 highest predictor variables.
+
+pairs(~Average_Concrete_Price + Starting_Year, data=nuclear.df)
+```
+
+```{r}
+# First checking for the correlation between "Cost" response variable and all the predictor variables using GG Pairs.
+
+# We shall now check all pairwise combinations of predictors and look at the correlation between them using GGPairs().
+
+nuclear.df.subset<-data.frame(nuclear.df$Cost_Billion_Dollars, nuclear.df$Gross_Capacity_MWe, nuclear.df$Efficiency_Percentage, nuclear.df$Starting_Year, nuclear.df$Duration, nuclear.df$Average_Inflation_Percentage, nuclear.df$Average_Concrete_Price)
+
+ggpairs(nuclear.df.subset)
+#LOESS or LOWESS: LOcally WEighted Scatter-plot Smoother
+ggpairs(nuclear.df.subset, lower = list(continuous = "smooth_loess", combo =
+"facethist", discrete = "facetbar", na = "na"))
+```
+
+### Starting_Year Removal
+
+```{r}
+print("From the result of GGPairs, we can see that Correlation between 'Cost' variable and 'Average_Concrete_Price' variable (0.276) is larger than correlation between 'Cost' variable and 'Starting_Year' variable (0.212). Hence we shall remove 'Starting_Year' variable from dataset due to Multicollinearity.")
+```
+
+```{r}
+# Doing Multicollinearity testing once again without Starting_Year Variable.
+
+
+multicollinearity.nuclear.regression.model<-lm(Cost_Billion_Dollars~Gross_Capacity_MWe+Efficiency_Percentage+Duration+Average_Inflation_Percentage+Average_Concrete_Price, data = nuclear.df)
+
+# Calculating VIF for Multicollinearity model
+
+imcdiag(multicollinearity.nuclear.regression.model, method="VIF")
+```
+
+```{r}
+print("No more multicollinearity now exists in our dataset.")
+```
+
+```{r}
+# Our new regression model: -
+
+new.nuclear.regression.model<-lm(Cost_Billion_Dollars~factor(Country)+factor(Reactor_Type)+Gross_Capacity_MWe+Efficiency_Percentage+Duration+Average_Inflation_Percentage+Average_Concrete_Price, data = nuclear.df)
+
+summary(new.nuclear.regression.model)
+
+```
+
+
+## Global F-Test
+
+```{r}
+#We ask the global question, Is this multiple regression model any good at all?? The answer is that we can test some hypotheses to see the relationship between the response and predictors. The first of these hypotheses is an overall F-test or a global F test which tells us if the multiple regression model is useful. To address the overall question, we will test
+
+# H0 : β1=β2=...=β7=0
+# Ha : At least one βi is not zero (i=1,2,...,7)
+
+# Our null hypothesis basically means that all of our supposedly Independent variables are junk food and not useful at all.
+
+# Our Alternative Hypothesis means that at least one of the independent variable is useful in our model.
+
+# We therefore shall now do ANOVA testing.
+
+new.nuclear.regression.model<-lm(Cost_Billion_Dollars~factor(Country)+factor(Reactor_Type)+Gross_Capacity_MWe+Efficiency_Percentage+Duration+Average_Inflation_Percentage+Average_Concrete_Price, data = nuclear.df) # (Full) model with all variables
+
+
+new.nuclear.regression.model.intercept<-lm(Cost_Billion_Dollars~1, data=nuclear.df) # Model with only intercept
+
+
+anova(new.nuclear.regression.model.intercept, new.nuclear.regression.model) # We compare the NULL model with the full model.
+```
+
+```{r}
+# Since the p-value of the anova table is <0.05, it means that the null hypotheses has to be rejected.
+
+# This means that at least one independent variable in our model is NOT junk.
+```
+
+
+## Step-wise Regression Procedure
+
+```{r}
+# We shall now do Step-wise Regression Procedure in order to know the significant variables in our regression model.
+
+new.nuclear.regression.model<-lm(Cost_Billion_Dollars~factor(Country)+factor(Reactor_Type)+Gross_Capacity_MWe+Efficiency_Percentage+Duration+Average_Inflation_Percentage+Average_Concrete_Price, data = nuclear.df)
+
+step.model = ols_step_both_p(new.nuclear.regression.model,pent = 0.1, prem = 0.3, details=FALSE)
+
+summary(step.model$model)
+```
+
+```{r}
+print("According to Step-wise procedure, the most significant variable in our model is 'Gross_Capacity_MWe' variable. We shall now do Backward Regression Procedure in order to know the least significant variable in our dataset.")
+```
+
+
+## Backward Regression Procedure
+
+```{r}
+# We shall now do Backward Regression Procedure in order to know the significant variables in our regression model.
+
+backward.model=ols_step_backward_p(new.nuclear.regression.model, prem = 0.05, details=FALSE)
+
+summary(backward.model$model)
+```
+
+```{r}
+print("According to backward procedure, the most insignificant variable in our model was 'Efficiency_Percentage' variable.")
+```
+
+```{r}
+print("The common significant variables, both in Step-wise and Backward procedure are: - Gross_Capacity_MWe, Duration, Average_Concrete_Price, Reactor_Type and Country. We shall now do Individual Coefficient Test (T-test) in order to finally know our significant variables and make our first order model.")
+```
+
+## Individual T-test
+
+```{r}
+# Performing Individual T-test
+
+# We shall now use Individual Coefficients Test (t-test) to find out the best model for our use.
+
+# In Partial test, we do t-test and then we look at the p-value.
+
+# Here the null hypothesis is H0 : :βi=0
+# Alternative hypothesis is Ha : βi≠0 (i=1,2,....,7)
+
+new.nuclear.regression.model<-lm(Cost_Billion_Dollars~factor(Country)+factor(Reactor_Type)+Gross_Capacity_MWe+Efficiency_Percentage+Duration+Average_Inflation_Percentage+Average_Concrete_Price, data = nuclear.df)
+
+summary(new.nuclear.regression.model)
+```
+
+```{r}
+print("From our Individual T-test, we can see that Country, Reactor_Type, Gross_Capacity_MWe, Duration, and Average_Concrete_Price are the only significant variables in our regression model, as confirmed by Step-Wise and Backward procedure. Efficiency_Percentage and Average_Inflation_Percentage variables are insignificant variables, therefore we shall remove them.")
+```
+
+# Additive Model
+
+```{r}
+# Making our reduced model. We are now removing Efficiency_Percentage and Average_Inflation_Percentage.
+
+new.nuclear.regression.model.reduced<-lm(Cost_Billion_Dollars~factor(Country)+factor(Reactor_Type)+Gross_Capacity_MWe+Duration+Average_Concrete_Price, data = nuclear.df)
+
+summary(new.nuclear.regression.model.reduced)
+```
+
+```{r}
+# Doing Partial F-Test using ANOVA.
+
+new.nuclear.regression.model<-lm(Cost_Billion_Dollars~factor(Country)+factor(Reactor_Type)+Gross_Capacity_MWe+Efficiency_Percentage+Duration+Average_Inflation_Percentage+Average_Concrete_Price, data = nuclear.df)
+
+new.nuclear.regression.model.reduced<-lm(Cost_Billion_Dollars~factor(Country)+factor(Reactor_Type)+Gross_Capacity_MWe+Duration+Average_Concrete_Price, data = nuclear.df) # Dropping all useless predictor variables.
+
+
+anova(new.nuclear.regression.model.reduced,new.nuclear.regression.model) # test if Ho: <List of insignificant variables> = 0 
+```
+
+```{r}
+print("The Partial F test cleary states that we cannot reject the NULL hypothesis, therefore it was a correct decision to remove all junk predictor variables.")
+```
+
+# Interaction Model
+
+```{r}
+# We shall now make our interaction model.
+
+# We would be using Individual Coefficients Test (t-test) method.
+
+# Here the null hypothesis is H0 : :βi=0
+# Alternative hypothesis is Ha : βi≠0 (i=1,2,...,5)
+
+interact.new.nuclear.regression.model.reduced<-lm(Cost_Billion_Dollars~(factor(Country)+factor(Reactor_Type)+Gross_Capacity_MWe+Duration+Average_Concrete_Price)^2, data = nuclear.df)
+
+options(max.print=999999)
+# Reference: - https://stackoverflow.com/a/6758748/10912105
+
+summary(interact.new.nuclear.regression.model.reduced)
+```
+
+
+```{r}
+# Our interact model has some of the interaction terms which are significant. 
+
+# Now we shall see the summary of our intercept model by removing all the insignificant predictor variables.
+
+# Here the null hypothesis is H0 : :βi=0
+# Alternative hypothesis is Ha : βi≠0 (i=1,2,...,5)
+
+# Now we have to manually add all the significant predictor variables to the "cleaned" interaction model. The new interaction model is the following: -
+
+interact.new.nuclear.regression.model.reduced.cleaned<-lm(Cost_Billion_Dollars~factor(Country)+factor(Reactor_Type)+Gross_Capacity_MWe+Duration+Average_Concrete_Price+factor(Country)*factor(Reactor_Type)+factor(Country)*Average_Concrete_Price  , data = nuclear.df)
+
+options(scipen=999)
+
+summary(interact.new.nuclear.regression.model.reduced.cleaned)
+```
+
+```{r}
+# As we can see from above t-test, we have discovered that factor(Country)UNITED STATES OF AMERICA*Average_Concrete_Price AND factor(Country)CHINA*factor(Reactor_Type)HTGR independent variables are also quite statistically significant since their p-value < 0.05. Therefore we have to reject the NULL Hypothesis for those variables. 
+
+# Also note that the Adjusted R-Squared of our interaction model is 0.6983 as opposed to 0.4784 for our purely additive model. Therefore our interaction model is superior and we must accept this model. We can observe interaction effect.
+
+# Doing Partial F-Test using ANOVA.
+
+interact.new.nuclear.regression.model.reduced<-lm(Cost_Billion_Dollars~(factor(Country)+factor(Reactor_Type)+Gross_Capacity_MWe+Duration+Average_Concrete_Price)^2, data = nuclear.df)
+
+interact.new.nuclear.regression.model.reduced.cleaned<-lm(Cost_Billion_Dollars~factor(Country)+factor(Reactor_Type)+Gross_Capacity_MWe+Duration+Average_Concrete_Price+factor(Country)*factor(Reactor_Type)+factor(Country)*Average_Concrete_Price  , data = nuclear.df) # Dropping all useless predictor variables.
+
+
+anova(interact.new.nuclear.regression.model.reduced.cleaned, interact.new.nuclear.regression.model.reduced) # test if Ho: <List of insignificant variables> = 0 
+```
+
+```{r}
+print("The Partial F test cleary states that we cannot reject the NULL hypothesis, therefore it was a correct decision to remove all junk predictor variables.")
+```
+
+
+```{r}
+# Interpreting the result from Cleaned Interaction Model.
+
+# Final Equation formed: -
+
+# Cost_Billion_Dollars = -2.0353231 + 9.5331245*Country(IRAN) + 0.0013776*Gross_Capacity_MWe -0.0085935*Duration + 0.0214370*Average_Concrete_Price + 14.1141829*Country(CHINA)*Reactor_Type(HTGR) + 0.0436586*Country(USA)*Average_Concrete_Price.                                                                     
+
+# 4 sub-models can be formed from the above equation. It depends upon the value of Country and Reactor_Type predictor variable; which sub model shall be used in the end.
+
+# Country can have either Iran, China or USA value.
+
+# Reactor_Type can have either value of HTGR or not.
+
+
+# Defining and interpreting each sub model: -
+
+
+
+
+
+
+# 1) Country = Every country except for Iran, China and USA, Reactor_Type = Can be any reactor type: -
+
+# Cost_Billion_Dollars = -2.0353231  + 0.0013776*Gross_Capacity_MWe -0.0085935*Duration + 0.0214370*Average_Concrete_Price.
+
+
+# Interpretation : - 
+
+# 1) For every increase in Gross_Capacity_MWe by 1 MWe, there is an increase of 0.0013776 Billion $ of the reactor cost; keeping all other variables constant.
+
+# 2) For every 1 year increase in the Duration, there is an decrease of 0.0085935 Billion $ of the reactor cost; keeping all other variables constant.
+
+# 3) For every increase in Average_Concrete_Price by 1 unit, there is an increase of 0.0214370 Billion $ of the reactor cost; keeping all other variables constant.
+
+
+
+
+
+
+
+# 2) Country = IRAN, Reactor_Type = Can be any reactor type: -
+
+# Cost_Billion_Dollars = -2.0353231 + 9.5331245*Country(IRAN) + 0.0013776*Gross_Capacity_MWe -0.0085935*Duration + 0.0214370*Average_Concrete_Price
+
+
+# Interpretation : - 
+
+# 1) For every increase in Gross_Capacity_MWe by 1 MWe, there is an increase of 0.0013776 Billion $ of the reactor cost; keeping all other variables constant.
+
+
+# 2) For every 1 year increase in the Duration, there is an decrease of 0.0085935 Billion $ of the reactor cost; keeping all other variables constant.
+
+# 3) For every increase in Average_Concrete_Price by 1 unit, there is an increase of 0.0214370 Billion $ of the reactor cost; keeping all other variables constant.
+
+# 4) Whenever a nuclear reactor is made in IRAN, the reactor cost 9.5331245 Billion $ more.
+
+
+
+
+
+
+# 3) Country = USA, Reactor_Type = Can be any reactor type: -
+
+# Cost_Billion_Dollars = -2.0353231 + 0.0013776*Gross_Capacity_MWe -0.0085935*Duration + 0.0214370*Average_Concrete_Price + 0.0436586*Country(USA)*Average_Concrete_Price.  
+
+# This can we re-written as: -
+
+# Cost_Billion_Dollars = -2.0353231 + 0.0013776*Gross_Capacity_MWe -0.0085935*Duration + (0.0214370 + 0.0436586*Country(USA))*Average_Concrete_Price.
+
+# Since Country(USA) == TRUE, Therefore value of Country(USA) = 1. Hence: -
+
+# Cost_Billion_Dollars = -2.0353231 + 0.0013776*Gross_Capacity_MWe -0.0085935*Duration + 0.0650956*Average_Concrete_Price.
+
+# Interpretation : - 
+
+# 1) For every increase in Gross_Capacity_MWe by 1 MWe, there is an increase of 0.0013776 Billion $ of the reactor cost; keeping all other variables constant.
+
+
+# 2) For every 1 year increase in the Duration, there is an decrease of 0.0085935 Billion $ of the reactor cost; keeping all other variables constant.
+
+# 3) For every increase in Average_Concrete_Price by 1 unit, there is an increase of 0.0650956 Billion $ of the reactor cost; keeping all other variables constant.
+
+
+
+
+
+
+# 4) Country = CHINA, Reactor_Type = HTGR : -
+
+# Cost_Billion_Dollars = -2.0353231 + 0.0013776*Gross_Capacity_MWe -0.0085935*Duration + 0.0214370*Average_Concrete_Price + 14.1141829*Country(CHINA)*Reactor_Type(HTGR).
+
+# Interpretation : - 
+
+# 1) For every increase in Gross_Capacity_MWe by 1 MWe, there is an increase of 0.0013776 Billion $ of the reactor cost; keeping all other variables constant.
+
+
+# 2) For every 1 year increase in the Duration, there is an decrease of 0.0085935 Billion $ of the reactor cost; keeping all other variables constant.
+
+# 3) For every increase in Average_Concrete_Price by 1 unit, there is an increase of 0.0214370 Billion $ of the reactor cost; keeping all other variables constant.
+
+# 4) When CHINA is making a nuclear reactor of type HTGR, then it costs them 14.1141829 Billion dollars more to construct that reactor.
+```
+
+# Higher Order Model
+
+```{r}
+# We shall now try to make a higher order model by keeping our interaction model as our foundation.
+
+# We shall now use GGPairs for our higher order model.
+
+# GGPairs is used only after making your basement. i.e. reduced model.
+
+
+# We shall now check all pairwise combinations of predictors and look at the correlation between them using GGPairs().
+
+nuclear.df.subset<-data.frame(nuclear.df$Cost_Billion_Dollars, nuclear.df$Gross_Capacity_MWe, nuclear.df$Duration, nuclear.df$Average_Concrete_Price)
+
+head(nuclear.df.subset, 4)
+```
+
+```{r}
+tail(nuclear.df.subset, 4)
+```
+
+```{r}
+ggpairs(nuclear.df.subset)
+#LOESS or LOWESS: LOcally WEighted Scatter-plot Smoother
+ggpairs(nuclear.df.subset, lower = list(continuous = "smooth_loess", combo =
+"facethist", discrete = "facetbar", na = "na"))
+```
+
+```{r}
+print("In our interact model, we should start by adding Higher orders of Gross_Capacity_MWe because it has the higest correlation with response variable 'Cost'. (0.436)")
+```
+```{r}
+# Adding Gross_Capacity_MWe square to model.
+
+quad.higher.model<-lm(Cost_Billion_Dollars~factor(Country)+factor(Reactor_Type)+Gross_Capacity_MWe+I(Gross_Capacity_MWe^2)+Duration+Average_Concrete_Price+factor(Country)*factor(Reactor_Type)+factor(Country)*Average_Concrete_Price, data = nuclear.df)
+
+summary(quad.higher.model)
+```
+
+```{r}
+print("Gross_Capacity_MWe^2 variable is not significant. Let us try with Duration.")
+```
+
+```{r}
+# Adding Duration square to model.
+
+quad.higher.model<-lm(Cost_Billion_Dollars~factor(Country)+factor(Reactor_Type)+Gross_Capacity_MWe+I(Duration^2)+Duration+Average_Concrete_Price+factor(Country)*factor(Reactor_Type)+factor(Country)*Average_Concrete_Price, data = nuclear.df)
+
+summary(quad.higher.model)
+```
+
+```{r}
+print("Duration^2 variable is not significant. Let us try with Average_Concrete_Price.")
+```
+
+```{r}
+# Adding Average_Concrete_Price square to model.
+
+quad.higher.model<-lm(Cost_Billion_Dollars~factor(Country)+factor(Reactor_Type)+Gross_Capacity_MWe+I(Average_Concrete_Price^2)+Duration+Average_Concrete_Price+factor(Country)*factor(Reactor_Type)+factor(Country)*Average_Concrete_Price, data = nuclear.df)
+
+summary(quad.higher.model)
+```
+
+```{r}
+print("Average_Concrete_Price ^2 variable is also not significant. Therefore our interaction model is the best model.")
+```
+
+# Assumptions testing
+## Linearity Assumption Test
+
+```{r}
+# 1) Linearity Assumption test
+
+# Plotting the residuals vs predicted value Ŷ plot.
+
+# Residual vs fitted data plot
+
+nuclear.best.model<-lm(Cost_Billion_Dollars~factor(Country)+factor(Reactor_Type)+Gross_Capacity_MWe+Duration+Average_Concrete_Price+factor(Country)*factor(Reactor_Type)+factor(Country)*Average_Concrete_Price, data = nuclear.df)
+
+ggplot(nuclear.best.model, aes(x=.fitted, y=.resid)) +
+  geom_point() + geom_smooth()+
+  geom_hline(yintercept = 0) 
+```
+
+```{r}
+print("Residual plot looks almost perfectly linear.")
+```
+
+## Independence Assumption Test
+
+```{r}
+# 2) Independence Assumption Test
+
+print("Independence Assumption Test usually fails when the data for both dependent and independent variables are observed sequentially over a period of time-called time-series data. Since our dataset in NOT time-series data, we pass the Independence Assumption Test.")
+```
+
+## Equal Variance Assumption
+
+```{r}
+# Checking for Homoscedasticity Assumption
+
+# Conducting a test for heteroscedasticity (non constant variance) and plotting a residual plot.
+
+# Using Bursch Pagan in order to check for heteroscedasticity.
+
+# H0: heteroscedasticity is not present (homoscedasticity) 
+# Ha: heteroscedasticity is present
+
+nuclear.best.model<-lm(Cost_Billion_Dollars~factor(Country)+factor(Reactor_Type)+Gross_Capacity_MWe+Duration+Average_Concrete_Price+factor(Country)*factor(Reactor_Type)+factor(Country)*Average_Concrete_Price, data = nuclear.df)
+
+library(lmtest)
+bptest(nuclear.best.model)
+```
+
+```{r}
+print("As we can see from the BP Test, the p-value > 0.05. Therefore H0 cannot be rejected. This means that in our best fit model, the error terms have a constant variance i.e. homoscedasticity. ")
+```
+
+```{r}
+# Plotting a scale location plot for visualisation.
+
+ggplot(nuclear.best.model, aes(x=.fitted, y=sqrt(abs(.stdresid)))) +
+  geom_point() +
+  geom_hline(yintercept = 0) +
+  geom_smooth()+
+   ggtitle("Scale-Location plot : Standardized Residual vs Fitted values") 
+```
+
+```{r}
+print("There appears to be no problem with homoscedasticity assumption.")
+```
+
+## Normality Assumption
+
+```{r}
+# Checking for Normality Assumption
+
+# Testing Normality Assumption
+
+# Shapiro - Wilk test
+
+# H0: the sample data are significantly normally distributed 
+# Ha: the sample data are not significantly normally distributed
+
+nuclear.best.model<-lm(Cost_Billion_Dollars~factor(Country)+factor(Reactor_Type)+Gross_Capacity_MWe+Duration+Average_Concrete_Price+factor(Country)*factor(Reactor_Type)+factor(Country)*Average_Concrete_Price, data = nuclear.df)
+
+shapiro.test(residuals(nuclear.best.model))
+```
+
+```{r}
+print("From the Shapiro-Wilk normality test, we can see that the p-value < 0.05. Therefore H0 has to be rejected. This means that the sample data are not significantly normally distributed. This is a problem.")
+```
+
+```{r}
+# Plotting a Normal Q-Q plot for visualisation.
+
+ggplot(nuclear.df, aes(sample=nuclear.best.model$residuals)) +
+  stat_qq() +
+  stat_qq_line()
+```
+```{r}
+print("An S-shaped pattern of deviations indicates that the residuals have excessive kurtosis, i.e., there are either too many or two few large errors in both directions.")
+```
+
+## Checking for Outliers
+
+```{r}
+# Detecting outliers by using Cook’s distance measure (using cooks.distance()>0.5 ) and Residual vs Leverage plot.
+
+nuclear.best.model<-lm(Cost_Billion_Dollars~factor(Country)+factor(Reactor_Type)+Gross_Capacity_MWe+Duration+Average_Concrete_Price+factor(Country)*factor(Reactor_Type)+factor(Country)*Average_Concrete_Price, data = nuclear.df)
+
+nuclear.df[cooks.distance(nuclear.best.model)>0.5,] # Having Cook statistics larger than 0.5
+
+plot(nuclear.best.model,pch=18,col="red",which=c(4))
+```
+
+
+```{r}
+print("There is not a single data point whose cook's distance is > 0.5. Hence according to Cook, no outlier detected.")
+```
+
+
+```{r}
+# Further Visualisation
+
+nuclear.best.model<-lm(Cost_Billion_Dollars~factor(Country)+factor(Reactor_Type)+Gross_Capacity_MWe+Duration+Average_Concrete_Price+factor(Country)*factor(Reactor_Type)+factor(Country)*Average_Concrete_Price, data = nuclear.df)
+
+nuclear.df[cooks.distance(nuclear.best.model)>0.5,] # Having Cook statistics larger than 0.5
+
+plot(nuclear.best.model,pch=18,col="red",which=c(5))
+```
+```{r}
+print("Again no outlier found.")
+```
+
+
+## Box Cox Transformation
+
+```{r}
+print("In order to correct the Normality Assumption, we shall try Box-Cox Transformation")
+```
+
+
+
+```{r}
+# We shall now be doing Box-Cox Transformation
+
+bc=boxcox(nuclear.best.model,lambda=seq(-1,1))
+```
+```{r}
+# Extracting best lambda
+
+bestlambda=bc$x[which(bc$y==max(bc$y))]
+bestlambda
+```
+
+```{r}
+box.cox.nuclear.best.model<-lm((((Cost_Billion_Dollars^0.3131313)-1)/0.3131313)~factor(Country)+factor(Reactor_Type)+Gross_Capacity_MWe+Duration+Average_Concrete_Price+factor(Country)*factor(Reactor_Type)+factor(Country)*Average_Concrete_Price, data = nuclear.df)
+
+summary(box.cox.nuclear.best.model)
+```
+
+```{r}
+print("Our model without Box-Cox transformation had the R^2 Adj. value of 0.6983, whereas after transformation it went upto 0.8019. This is a huge change in positive direction. Box-Cox made our model better.")
+```
+
+### Equal Variance Assumption
+
+```{r}
+# Performing a diagnostics analysis for the Box-Cox model.
+
+# Now we would perform Equal Variance Assumption and Normality Assumption.
+
+# Conducting a test for heteroscedasticity (non constant variance) and plotting a residual plot.
+
+# Using Bursch Pagan in order to check for heteroscedasticity.
+
+# H0: heteroscedasticity is not present (homoscedasticity) 
+# Ha: heteroscedasticity is present
+
+box.cox.nuclear.best.model<-lm((((Cost_Billion_Dollars^0.3131313)-1)/0.3131313)~factor(Country)+factor(Reactor_Type)+Gross_Capacity_MWe+Duration+Average_Concrete_Price+factor(Country)*factor(Reactor_Type)+factor(Country)*Average_Concrete_Price, data = nuclear.df)
+
+bptest(box.cox.nuclear.best.model)
+```
+
+```{r}
+print("As we can see from the BP Test, the p-value > 0.05. Therefore H0 cannot be rejected. This means that in our box cox fit model, the error terms have a constant variance i.e. homoscedasticity. Do note that the p-value decreased after the transformation.")
+```
+
+```{r}
+# Plotting a scale location plot for visualisation.
+
+ggplot(box.cox.nuclear.best.model, aes(x=.fitted, y=sqrt(abs(.stdresid)))) +
+  geom_point() +
+  geom_hline(yintercept = 0) +
+  geom_smooth()+
+   ggtitle("Scale-Location plot : Standardized Residual vs Fitted values") 
+```
+
+
+
+### Normality Assumption
+
+```{r}
+# Checking for Normality Assumption
+
+# Testing Normality Assumption
+
+# Shapiro - Wilk test
+
+# H0: the sample data are significantly normally distributed 
+# Ha: the sample data are not significantly normally distributed
+
+box.cox.nuclear.best.model<-lm((((Cost_Billion_Dollars^0.3131313)-1)/0.3131313)~factor(Country)+factor(Reactor_Type)+Gross_Capacity_MWe+Duration+Average_Concrete_Price+factor(Country)*factor(Reactor_Type)+factor(Country)*Average_Concrete_Price, data = nuclear.df)
+
+shapiro.test(residuals(box.cox.nuclear.best.model))
+```
+
+```{r}
+print("From the Shapiro-Wilk normality test, we can see that the p-value < 0.05. Therefore H0 has to be rejected. This means that the sample data is still not significantly normally distributed. Do note that the p-value of Shapiro-Wilk normality test has improved sharpely after the transformation, but it is still not enough.")
+```
+
+```{r}
+# Plotting a Normal Q-Q plot for visualisation.
+
+ggplot(nuclear.df, aes(sample=box.cox.nuclear.best.model$residuals)) +
+  stat_qq() +
+  stat_qq_line()
+```
+
+
+### Linearity Assumption Test
+
+```{r}
+# 1) Linearity Assumption test
+
+# Plotting the residuals vs predicted value Ŷ plot.
+
+# Residual vs fitted data plot
+
+box.cox.nuclear.best.model<-lm((((Cost_Billion_Dollars^0.3131313)-1)/0.3131313)~factor(Country)+factor(Reactor_Type)+Gross_Capacity_MWe+Duration+Average_Concrete_Price+factor(Country)*factor(Reactor_Type)+factor(Country)*Average_Concrete_Price, data = nuclear.df)
+
+ggplot(box.cox.nuclear.best.model, aes(x=.fitted, y=.resid)) +
+  geom_point() + geom_smooth()+
+  geom_hline(yintercept = 0) 
+```
+
+```{r}
+print("Residual plot looks almost perfectly linear.")
+```
+
+# Making Predictions
+
+```{r}
+# We would now try to make an assumption based on our model.
+
+# Prediction time.
+
+# First checking whether the values which are to be predicted are inside the minimum and maximum values or not.
+
+box.cox.nuclear.best.model<-lm((((Cost_Billion_Dollars^0.3131313)-1)/0.3131313)~factor(Country)+factor(Reactor_Type)+Gross_Capacity_MWe+Duration+Average_Concrete_Price+factor(Country)*factor(Reactor_Type)+factor(Country)*Average_Concrete_Price, data = nuclear.df)
+
+# Gross_Capacity_MWe
+# Duration
+# Average_Concrete_Price
+
+# Predicting the cost of a nuclear reactor made in China of the type FBR, whose construction started in year 2017 and will be completed in 6 years. The reactor generates 600 MWe of electricity. We are taking the Average concrete price to be 278 units. 
+
+# We are predicting this specific reactor because China is making such a reactor named XIAPU-1.
+
+
+
+favstats(~Gross_Capacity_MWe, data = nuclear.df)
+favstats(~Duration, data = nuclear.df)
+favstats(~Average_Concrete_Price, data = nuclear.df)
+
+```
+
+```{r}
+# Model Fit
+
+# We put our own custom values to intrapolate the value of the dependent variable.
+
+box.cox.nuclear.best.model<-lm((((Cost_Billion_Dollars^0.3131313)-1)/0.3131313)~factor(Country)+factor(Reactor_Type)+Gross_Capacity_MWe+Duration+Average_Concrete_Price+factor(Country)*factor(Reactor_Type)+factor(Country)*Average_Concrete_Price, data = nuclear.df)
+
+custom.data = data.frame(Country = 'CHINA',  Reactor_Type = 'FBR', Gross_Capacity_MWe = 600, Duration = 6, Average_Concrete_Price = 278)
+
+predict(box.cox.nuclear.best.model ,custom.data, interval="predict")
+```
+
+```{r}
+print("Cannot make certain prediction due to warning.")
+```
+
+# The End
+
+```{r}
+print("The End")
+```
+
