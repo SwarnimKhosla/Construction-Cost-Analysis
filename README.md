@@ -16,9 +16,3 @@ Please **download the .html file** in order to see all the outputs and visualisa
 In order to run the code on your local machine, then you have to download the .Rmd file and run it using R Studio. Download .csv file as well.
 
 ***
-
-### Example Visualisation
-
-
-
-***
